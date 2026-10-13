@@ -1,117 +1,149 @@
-# Applied AI in Healthcare
+# Maternal Health Risk Classification
 
-## Project-Maternal Health Risk Classification
+This project explores supervised machine learning for classifying maternal health risk into **Low Risk**, **Mid Risk**, and **High Risk** categories using six health-related input features. The notebook covers data-quality investigation, data cleaning, model training and evaluation, SHAP-based explainability, and a small prediction prototype.
 
-This project explores the use of machine learning to classify maternal health risk into three ordinal categories:
+> **Important:** This is an educational prototype, not a diagnostic tool. Its predictions and probability outputs are not clinically validated and must not be used to make healthcare decisions.
 
- Low Risk, Mid Risk and High Risk
+## Project objectives
 
-The model uses maternal health measurements such as:
-
-- Age
-- Systolic Blood Pressure
-- Diastolic Blood Pressure
-- Blood Sugar
-- Body Temperature
-- Heart Rate
-
-The project includes data quality assessment, data cleaning, exploratory analysis, machine-learning model comparison, model evaluation, and SHAP-based model explainability.
-
-The evaluated models are:
-
-- Logistic Regression
-- Random Forest
-- XGBoost
-
-XGBoost was selected as the final prototype model based on its held-out test performance and class-level results.
+- Explore the Maternal Health Risk dataset and investigate data quality.
+- Prepare a modelling dataset while documenting duplicate records and inconsistent risk labels.
+- Compare Logistic Regression, Random Forest, and XGBoost classifiers.
+- Evaluate the models using a stratified held-out test set and five-fold cross-validation.
+- Use SHAP to examine which features contribute most to XGBoost predictions.
+- Save and reload the selected model and demonstrate predictions on illustrative examples.
 
 ## Dataset
 
-The project uses the Maternal Health Risk dataset available through the UCI Machine Learning Repository.
-
-Dataset source:
-
-https://archive.ics.uci.edu/
-
-The original dataset contains 1,014 records and seven variables. After data-quality assessment and cleaning, the final modelling dataset contains 380 records.
-
-The final dataset contains:
-
-- 203 Low Risk records
-- 76 Mid Risk records
-- 101 High Risk records
-
-## Methodology
-
-The project workflow includes:
-
-1. Exploratory data analysis
-2. Data quality assessment
-3. Duplicate and inconsistent-label investigation
-4. Data cleaning
-5. Feature and target preparation
-6. Stratified train-test splitting
-7. Feature scaling where appropriate
-8. Model training and comparison
-9. Five-fold cross-validation
-10. Model evaluation using accuracy and balanced accuracy
-11. SHAP-based explainability
-12. Final model selection
-13. Prototype risk prediction
-
-## Model Performance
-
-The models were evaluated using the held-out test set.
-
-| Model | Accuracy | Balanced Accuracy |
-|---|---:|---:|
-| Logistic Regression | 64.5% | 53.5% |
-| Random Forest | 75.0% | 65.6% |
-| XGBoost | 82.9% | 75.6% |
-
-XGBoost achieved the strongest held-out test performance. The Mid Risk category remained the most difficult class to classify.
-
-## Explainability
-
-SHAP (SHapley Additive exPlanations) was used to investigate how individual features contributed to the XGBoost model's predictions across the three maternal health risk categories.
-
-Blood Sugar (BS), Systolic Blood Pressure, and Body Temperature showed the strongest overall contributions. Higher values of these features generally contributed towards High Risk predictions in the relevant SHAP plots.
-
-Age, Diastolic Blood Pressure, and Heart Rate generally showed smaller overall contributions.
-
-The Mid Risk category showed more mixed feature effects, suggesting that predictions for this class may depend on combinations of features rather than a single predictor.
-
-SHAP provided an additional layer of model interpretability by helping explain how the XGBoost model used different maternal health measurements when making predictions.
-
-## **Project Structure**
+The notebook expects the CSV file at:
 
 ```text
-AppliedAI/
-├── data/
-│   └── Maternal Health Risk Data Set.csv
-├── notebooks/
-├── results/
-├── src/
-├── .gitignore
-├── Project.ipynb
-├── README.md
-└── xgb_final_model.pkl
+data/Maternal Health Risk Data Set.csv
 ```
 
-## Limitations
+The dataset is available through the [UCI Machine Learning Repository: Maternal Health Risk](https://archive.ics.uci.edu/dataset/863/maternal+health+risk). The UCI record describes data collected from healthcare settings in rural Bangladesh and lists the dataset under a **Creative Commons Attribution 4.0 International (CC BY 4.0)** licence. Please retain attribution to the dataset source when redistributing or adapting it.
 
-This project is a prototype-level machine-learning study and is not a clinical diagnostic system.
+**Dataset citation:** Ahmed, M. (2020). *Maternal Health Risk* [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5DP5D
 
-The findings should be interpreted cautiously because:
+### Features and target
 
-- the final dataset is relatively small
-- the source data may not represent the wider maternal population
-- the model has not been externally validated
-- the Mid Risk class remains more difficult to classify
-- the prototype has not been evaluated in a real clinical setting
+| Column | Description |
+|---|---|
+| `Age` | Maternal age |
+| `SystolicBP` | Systolic blood pressure |
+| `DiastolicBP` | Diastolic blood pressure |
+| `BS` | Blood sugar |
+| `BodyTemp` | Body temperature |
+| `HeartRate` | Heart rate |
+| `RiskLevel` | Target category: low risk, mid risk, or high risk |
 
-The model is therefore intended as a prototype decision-support concept rather than a replacement for clinical judgement.
+## Data preparation
 
-## Purpose
+The source file contained **1,014 records and 7 columns**. The notebook found no missing values in its initial checks, but identified duplicate records and inconsistent labels.
 
-This project was developed as part of my Applied AI studies to explore how machine-learning methods can be applied to a healthcare classification problem and how model performance and interpretability can be evaluated.
+The cleaning workflow:
+
+1. Removed exact duplicate records, leaving 452 unique rows.
+2. Identified 35 predictor profiles where the same six input values were associated with different `RiskLevel` labels. The 71 unique rows associated with these ambiguous profiles were excluded rather than assigned an unsupported label.
+3. Removed one remaining record with an implausible `HeartRate` value of 7.
+4. Retained records with `Age` below 18 because they had valid feature and target values; their presence is treated as a dataset limitation.
+
+The final modelling dataset contains **380 records**:
+
+| Risk category | Records | Share |
+|---|---:|---:|
+| Low Risk | 203 | 53.4% |
+| Mid Risk | 76 | 20.0% |
+| High Risk | 101 | 26.6% |
+
+The target was encoded as `0 = Low Risk`, `1 = Mid Risk`, and `2 = High Risk`. The data was split into training and test sets using a stratified 80:20 split (`random_state=42`), giving 304 training records and 76 test records.
+
+## Models and evaluation
+
+The notebook compares three classifiers:
+
+- **Logistic Regression** — baseline model.
+- **Random Forest** — 100 trees (`n_estimators=100`).
+- **XGBoost** — 100 estimators, `max_depth=3`, and `learning_rate=0.1`.
+
+The model-comparison table in the notebook reports the following results. Cross-validation uses balanced accuracy over five folds.
+
+| Model | Test accuracy | Test balanced accuracy | CV mean balanced accuracy | CV standard deviation |
+|---|---:|---:|---:|---:|
+| Logistic Regression | 65.8% | 54.3% | 59.3% | 2.9 percentage points |
+| Random Forest | 75.0% | 65.6% | **69.1%** | 7.2 percentage points |
+| XGBoost | **82.9%** | **75.6%** | 68.5% | 9.0 percentage points |
+
+XGBoost had the highest held-out test accuracy and balanced accuracy. Random Forest had the highest mean cross-validation balanced accuracy, so the results do not establish that XGBoost is best under every evaluation method.
+
+### Recall by risk category
+
+The held-out test classification report for the updated, scaled Logistic Regression pipeline gives recalls of 88% for Low Risk, 20% for Mid Risk, and 55% for High Risk. The Random Forest and XGBoost recall values in the notebook's class-level comparison are shown alongside them below:
+
+| Risk category | Logistic Regression | Random Forest | XGBoost |
+|---|---:|---:|---:|
+| Low Risk | 88% | 90% | **95%** |
+| Mid Risk | 20% | 27% | **47%** |
+| High Risk | 55% | 80% | **85%** |
+
+Mid Risk was the most difficult category for all three models. XGBoost had the highest Mid Risk recall of the three, but at 47% it still missed more than half of the Mid Risk examples in the held-out test set.
+
+## SHAP explainability
+
+SHAP (SHapley Additive exPlanations) was applied to the XGBoost model to examine feature contributions for the test data. The overall mean absolute SHAP values recorded in the notebook ranked the features as follows:
+
+| Feature | Mean absolute SHAP value |
+|---|---:|
+| `BS` | 0.885 |
+| `SystolicBP` | 0.496 |
+| `BodyTemp` | 0.386 |
+| `Age` | 0.176 |
+| `DiastolicBP` | 0.136 |
+| `HeartRate` | 0.134 |
+
+These values describe how strongly features contribute to model predictions in this fitted model; they do **not** show that a feature causes a health outcome.
+
+## Prototype
+
+The notebook saves the selected XGBoost model as `xgb_final_model.pkl` with `joblib`, reloads it, and verifies that the reloaded model generates the same predictions as the original model for the held-out test data.
+
+It also includes a `predict_maternal_risk(...)` function that accepts `Age`, `SystolicBP`, `DiastolicBP`, `BS`, `BodyTemp`, and `HeartRate`, then returns a predicted risk category and, in the probability-enabled version, model-estimated probabilities for each class. The `.pkl` file is generated when the relevant notebook cell is run; it is not required to be present before the notebook is executed.
+
+The model-estimated probabilities have not been clinically validated or calibrated for clinical interpretation.
+
+## Requirements
+
+The notebook uses Python and the following libraries:
+
+- pandas
+- NumPy
+- seaborn
+- Matplotlib
+- scikit-learn
+- XGBoost
+- SHAP
+- joblib
+- Jupyter (or the Jupyter support in VS Code)
+
+Install the libraries in your chosen Python environment with:
+
+```bash
+python -m pip install pandas numpy seaborn matplotlib scikit-learn xgboost shap joblib jupyter
+```
+
+## How to run
+
+1. Clone or download this repository.
+2. Ensure the dataset file is located at `data/Maternal Health Risk Data Set.csv` relative to the repository root.
+3. Open the repository folder in VS Code or start Jupyter from the repository root.
+4. Open `Project.ipynb` and select the Python environment where the required libraries are installed.
+5. Run the notebook cells from top to bottom. The notebook creates the cleaned modelling data, trains and evaluates the models, runs SHAP analysis, and demonstrates the prediction prototype.
+
+## Limitations and responsible use
+
+- The dataset shrinks to 380 records after duplicate, inconsistent-label, and implausible-value handling.
+- The source data and its risk labels may not represent the wider maternal population or healthcare settings.
+- Records with ages below 18 remain in the data and should be considered when interpreting model behaviour.
+- Mid Risk recall remains low, including 47% for XGBoost on the held-out test set.
+- The model has not been externally validated, and its probability outputs are not clinically validated probabilities.
+- The prototype is for educational demonstration only and is not a substitute for clinical judgement or professional care.
